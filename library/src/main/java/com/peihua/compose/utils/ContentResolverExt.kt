@@ -20,6 +20,7 @@ import androidx.core.net.toUri
 import com.peihua.compose.ContextInitializer
 import com.peihua.compose.file.copyToFile
 import com.peihua.compose.file.createFileName
+import com.peihua.compose.file.fetchFileName
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
@@ -119,6 +120,8 @@ fun Context.getFileFromContentUri(contentUri: Uri?): File? {
  * @param description 文件描述
  */
 fun ContentResolver.saveBitmapToGallery(
+    uri: Uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+    folderName: String = "",
     source: Bitmap,
     title: String,
     description: String,
@@ -128,11 +131,14 @@ fun ContentResolver.saveBitmapToGallery(
     values.put(MediaStore.Images.Media.DISPLAY_NAME, title)
     values.put(MediaStore.Images.Media.DESCRIPTION, description)
     values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+    if (folderName.isNonEmpty()) {
+        values.put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/$folderName")
+    }
     // Add the date meta data to ensure the image is added at the front of the gallery
     values.put(MediaStore.Images.Media.DATE_ADDED, System.currentTimeMillis())
     values.put(MediaStore.Images.Media.DATE_TAKEN, System.currentTimeMillis())
     try {
-        return insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)?.let {
+        return insert(uri, values)?.let {
             openOutputStream(it)?.use {
                 source.compress(Bitmap.CompressFormat.JPEG, 100, it)
             }
@@ -202,14 +208,21 @@ private fun ContentResolver.storeThumbnail(
 }
 
 fun ContentResolver.saveFileToExternal(source: File, mimeType: String): Uri? {
-    return saveFileToExternal(source, source.name, source.nameWithoutExtension, mimeType)
+    return saveFileToExternal(source = source, displayName = source.name, mimeType = mimeType)
 }
 
 fun ContentResolver.saveFileToExternal(source: File, displayName: String, mimeType: String): Uri? {
-    return saveFileToExternal(source, displayName, source.nameWithoutExtension, mimeType)
+    return saveFileToExternal(
+        source = source,
+        displayName = displayName,
+        title = source.nameWithoutExtension,
+        mimeType = mimeType
+    )
 }
 
 fun ContentResolver.saveFileToExternal(
+    uri: Uri = MediaStore.Files.getContentUri("external"),
+    folderName: String = "",
     source: File,
     displayName: String,
     title: String,
@@ -219,11 +232,14 @@ fun ContentResolver.saveFileToExternal(
     values.put(MediaStore.Images.Media.TITLE, title)
     values.put(MediaStore.Images.Media.DISPLAY_NAME, displayName)
     values.put(MediaStore.Images.Media.MIME_TYPE, mimeType)
+    if (folderName.isNonEmpty()) {
+        values.put(MediaStore.Images.Media.RELATIVE_PATH, folderName)
+    }
     // Add the date meta data to ensure the image is added at the front of the gallery
     values.put(MediaStore.Images.Media.DATE_ADDED, System.currentTimeMillis())
     values.put(MediaStore.Images.Media.DATE_TAKEN, System.currentTimeMillis())
     try {
-        val uri = insert(MediaStore.Files.getContentUri("external"), values)
+        val uri = insert(uri, values)
         if (uri != null) {
             val imageOut = openOutputStream(uri)
             try {
@@ -280,7 +296,7 @@ fun Context.saveImageToGallery(source: File, fileName: String, description: Stri
  * @param description 文件描述
  */
 fun Context.saveImageToGallery(path: String, description: String): Uri? {
-    return saveImageToGallery(path, path.createFileName("jpg"), description)
+    return saveImageToGallery(path, (path.fetchFileName()?:"IMG")+"_".createFileName("jpg"), description)
 }
 
 fun Context.saveImageToGallery(path: String, fileName: String, description: String): Uri? {
@@ -294,7 +310,25 @@ fun Context.saveImageToGallery(path: String, fileName: String, description: Stri
  * @param description 文件描述
  */
 fun Context.saveBitmapToGallery(source: Bitmap, title: String, description: String): Uri? {
-    return contentResolver.saveBitmapToGallery(source, title, description)
+    return saveBitmapToGallery(
+        folderName = "",
+        source = source,
+        title = title,
+        description = description
+    )
+}
+
+/**
+ * 保存一个图片[source]到相册
+ * @param source 图片对象
+ * @param title 文件显示名称
+ * @param description 文件描述
+ */
+fun Context.saveBitmapToGallery(
+    uri: Uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+    folderName: String = "", source: Bitmap, title: String, description: String,
+): Uri? {
+    return contentResolver.saveBitmapToGallery(uri, folderName, source, title, description)
 }
 
 /**
@@ -314,12 +348,14 @@ fun Context.saveFileToExternal(source: File, mimeType: String): Uri? {
  * @version 1.0
  */
 fun Context.saveFileToExternal(
+    uri: Uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+    folderName: String = "",
     source: File,
     displayName: String,
     title: String,
     mimeType: String,
 ): Uri? {
-    return contentResolver.saveFileToExternal(source, displayName, title, mimeType)
+    return contentResolver.saveFileToExternal(uri, folderName, source, displayName, title, mimeType)
 }
 
 /**
@@ -329,11 +365,11 @@ fun Context.saveFileToExternal(
  * @version 1.0
  */
 fun Context.saveFileToExternal(source: File, displayName: String, mimeType: String): Uri? {
-    return contentResolver.saveFileToExternal(
-        source,
-        displayName,
-        source.nameWithoutExtension,
-        mimeType
+    return saveFileToExternal(
+        source = source,
+        displayName = displayName,
+        title = source.nameWithoutExtension,
+        mimeType = mimeType
     )
 }
 

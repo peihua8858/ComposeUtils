@@ -11,6 +11,7 @@ import com.peihua.compose.ContextInitializer
 import com.peihua.compose.file.adjustBitmapOrientation
 import com.peihua.compose.file.copyToFile
 import com.peihua.compose.file.decodeFileToBitmap
+import java.io.InputStream
 
 
 val Uri?.mimeTypeFromFilePath: String?
@@ -76,3 +77,8 @@ fun Uri.adjustBitmapOrientation(): Bitmap? {
     return file?.adjustBitmapOrientation()
 
 }
+
+fun Uri.openInputStream(): InputStream? {
+    return ContextInitializer.context.contentResolver.openInputStream(this)
+}
+
