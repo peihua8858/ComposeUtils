@@ -396,8 +396,8 @@ fun StringBuilder.deleteEndChar(): StringBuilder {
  */
 fun StringBuilder.deleteEndChar(endChar: String): StringBuilder {
     val index = lastIndexOf(endChar)
-    if (isNotEmpty() && index == length - 1) {
-        deleteCharAt(index)
+    if (isNotEmpty() && index == length - endChar.length) {
+        delete(index, length)
     }
     return this
 }
