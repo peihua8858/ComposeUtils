@@ -57,7 +57,7 @@ dependencies {
 1、判断字符串是否为空
 
 ```kotlin
-import com.peihua.utils.isNonEmpty
+import com.peihua8858.utils.isNonEmpty
 val spu:String? =null 
 var result:String=""
 if (spu.isNonEmpty()) {
@@ -68,9 +68,9 @@ if (spu.isNonEmpty()) {
 2、判断List、Map或者Array 是否为空
 ```kotlin
 //List
-import com.peihua.collections.isNonEmpty
+import com.peihua8858.collections.isNonEmpty
 //Array 
-import com.peihua.array.isNonEmpty
+import com.peihua8858.array.isNonEmpty
 
 val list:List<String>? =null 
 var result:List<String> = arrayListOf()
@@ -79,7 +79,7 @@ if (list.isNonEmpty()) {
 }
 
 //Map 
-import com.peihua.map.isNonEmpty
+import com.peihua8858.map.isNonEmpty
 val map:Map<String,String>? =null 
 var result:Map<String,String> = hashMapOf()
 if (map.isNonEmpty()) {
@@ -88,14 +88,14 @@ if (map.isNonEmpty()) {
 ```
 3、使用ContentProvider保存图片文件到sd卡
 ```kotlin
-import com.peihua.utils.saveImageToGallery
+import com.peihua8858.utils.saveImageToGallery
 val imageFile = File("D://images/5.jpg")
 context.saveImageToGallery(imageFile, imageFile.name)
 ```
 4、网络状态
 ```kotlin
 //kotlin  or java
-import com.peihua.network.NetworkUtil
+import com.peihua8858.network.NetworkUtil
 if (NetworkUtil.isConnected(context, true)) {
      showToast("Internet connection.")
 }else{

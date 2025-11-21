@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace 'com.peihua.composeutil'
+    namespace 'com.peihua8858.composeutil'
     compileSdk 36
 
     defaultConfig {
-        applicationId "com.peihua.composeutil"
+        applicationId "com.peihua8858.composeutil"
         minSdk 24
         targetSdk 36
         versionCode 1

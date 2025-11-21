@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace 'com.android.compose.tools'
+    namespace 'com.peihua8858.compose.tools'
     compileSdk 36
 
     defaultConfig {
