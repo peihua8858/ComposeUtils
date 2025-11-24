@@ -46,7 +46,7 @@ dependencies {
     implementation libs.androidx.material.icons.extended
     implementation(libs.androidx.compose.materialWindow)
     implementation(libs.androidx.paging.compose.android)
-    api 'com.github.peihua8858.KotlinTools:tools-android:1.0.0'
+    api 'com.github.peihua8858.KotlinTools:tools-android:1.0.1'
 }
 
 group = 'com.github.peihua8858'
