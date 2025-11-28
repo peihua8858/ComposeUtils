@@ -1,0 +1,148 @@
+apply plugin: "maven-publish"
+group = 'com.github.peihua8858'
+def apiVersion = "1.0.0-SNAPSHOT"
+apiVersion = getVersion(apiVersion)
+
+publishing {
+    publications {
+        library(MavenPublication) {
+            afterEvaluate {
+                from components.findByName('release')
+                groupId group
+                artifactId "ComposeUtils"
+                version "${apiVersion}"
+                println "发布成功：maven url = " + getGroupId() + ":" + getArtifactId() + ":" + getVersion()
+            }
+        }
+    }
+
+    repositories {
+        def repositoryInfo = getRepositoryInfo(apiVersion)
+        maven {
+            name = "Release"
+            url = repositoryInfo.get("repository")
+            credentials {
+                username = repositoryInfo.get("username")
+                password = repositoryInfo.get("password")
+            }
+        }
+        maven {
+            name = "LocalFile"
+            url = uri("${rootDir}/plugin_libs")
+        }
+    }
+}
+
+def getRepositoryInfo(String version) {
+    HashMap info = new HashMap()
+
+    if (version.endsWith("-SNAPSHOT")) {
+        info.put("repository", "https://maven.com/nexus/content/repositories/snapshots")
+        info.put("username", "snapshotsAdmin")
+        info.put("password", "123456")
+    } else {
+        info.put("repository", "https://maven.com/nexus/content/repositories/releases")
+        def accountMap = getAccount()
+        info.put("username", accountMap.get("username"))
+        info.put("password", accountMap.get("password"))
+    }
+    return info
+}
+
+HashMap getAccount() {
+    HashMap accountMap = new HashMap()
+    def parsedSettingsXml
+    def settingsFile = '/home/admin/software/apache-maven-3.2.1/conf/settings.xml'
+    def defaultSettingsFile = System.getProperty("user.home") + "/.m2/settings.xml"
+    println("defaultSettingsFile: " + defaultSettingsFile)
+    if (new File(settingsFile).exists() || new File(defaultSettingsFile).exists()) {
+        def settingsXml = defaultSettingsFile
+        if (new File(settingsFile).exists()) {
+            settingsXml = settingsFile
+        }
+        parsedSettingsXml = (new XmlParser()).parse(settingsXml);
+        parsedSettingsXml.servers[0].server.each { server ->
+            if ("releases" == server.id.text()) {
+                accountMap.put("id", server.id.text())
+                accountMap.put("username", server.username.text())
+                accountMap.put("password", server.password.text())
+            }
+        }
+    }
+    if (accountMap.get("username") == null || accountMap.get("password") == null) {
+        accountMap.put("id", "releases")
+        accountMap.put("username", "admin")
+        accountMap.put("password", "screct")
+    }
+    return accountMap
+}
+
+// 获取发布版本
+String getVersion(String localVersion) {
+    // 获取发布版本
+    def deployVersion = localVersion
+    //获取平台或者是打包脚本中的版本参数对应的要打包的版本信息
+    if (System.getenv("deployVersion") != null) {
+        deployVersion = System.getenv("deployVersion")
+    }
+    if (System.hasProperty('deployVersion')) {
+        deployVersion = System.getProperty('deployVersion')
+    }
+    return deployVersion
+}
+
+task deleteBuild(type: Delete) {
+    doFirst {
+        println "deleteBuild() start"
+    }
+    def buildDir = project.buildDir.absolutePath
+    delete buildDir
+    doLast {
+        println "deleteBuild() end"
+    }
+}
+deleteBuild.mustRunAfter "clean"
+assemble.mustRunAfter "deleteBuild"
+task publishLibraryToRemoteReleaseMaven {
+    doFirst {
+        println "publishLibraryToRemoteMaven() start"
+    }
+    group = 'genie-publish'
+    description = 'Publish AAR to remote Maven repo (fresh copy)'
+    dependsOn 'clean'
+    dependsOn 'deleteBuild'
+    dependsOn 'assemble'
+    dependsOn 'publishLibraryPublicationToReleaseRepository'
+    publishLibraryPublicationToReleaseRepository.mustRunAfter "assemble"
+    doLast {
+        println "publishLibraryToRemoteMaven() end"
+    }
+}
+task deleteLocalFile(type: Delete) {
+    doFirst {
+        println "deleteLocalFile() start"
+    }
+    def dir = project.rootDir.absolutePath + "/plugin_libs"
+    delete dir
+    doLast {
+        println "deleteLocalFile() end"
+    }
+}
+
+task publishLibraryToLocalFileMaven {
+    doFirst {
+        println "publishLibraryToLocalFileMaven() start"
+    }
+    group = 'genie-publish'
+    description = 'Publish AAR to local Maven repo (fresh copy)'
+    dependsOn 'clean'
+    dependsOn 'deleteBuild'
+    dependsOn 'deleteLocalFile'
+    dependsOn 'assemble'
+    dependsOn 'publishLibraryPublicationToLocalFileRepository'
+    deleteLocalFile.mustRunAfter "assemble"
+    publishLibraryPublicationToLocalFileRepository.mustRunAfter "deleteLocalFile"
+    doLast {
+        println "publishLibraryToLocalFileMaven() end"
+    }
+}
