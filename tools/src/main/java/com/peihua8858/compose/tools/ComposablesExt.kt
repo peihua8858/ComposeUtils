@@ -6,6 +6,8 @@ import androidx.compose.runtime.MutableFloatState
 import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.MutableLongState
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -48,11 +50,16 @@ fun <T> rememberStateList(data: List<T>): SnapshotStateList<T> {
         result.addAll(data)
     }
     return result
-    }
+}
 
 @Composable
 fun <T> rememberSaveableList(): SnapshotStateList<T> {
     return rememberSaveableList(arrayListOf())
+}
+
+@Composable
+fun <T> rememberDerivedStateOf(calculation: () -> T): State<T> {
+    return remember { derivedStateOf { calculation() } }
 }
 
 @Composable
