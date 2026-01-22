@@ -133,15 +133,23 @@ fun <T : Any> LazyGridScope.items(
             }
         }
     ) { index ->
+//        val lazyGridState = state
+        // 获取 lazyList 布局信息
+//        val listLayoutInfo by remember { derivedStateOf { lazyGridState.layoutInfo } }
+//        val isReachedBottom by remember {
+//            derivedStateOf {
+//                (listLayoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) == listLayoutInfo.totalItemsCount - 1
+//            }
+//        }
         if (spanCount == -1) {
-            itemContent(index, items[index])
+            items[index]?.let { itemContent(index, it) }
         } else {
             val rowIndex = index / spanCount
             if (rowIndex >= rowCount - 1) {
                 //最后一项触发加载更多
-                itemContent(index, items[index])
+                items[index]?.let { itemContent(index, it) }
             } else {
-                itemContent(index, items.peek(index))
+                items.peek(index)?.let { itemContent(index, it) }
             }
         }
     }

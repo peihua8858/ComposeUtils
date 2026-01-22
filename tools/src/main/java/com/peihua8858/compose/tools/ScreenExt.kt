@@ -1,7 +1,13 @@
 package com.peihua8858.compose.tools
 
 import android.content.Context
+import android.content.res.Configuration
+import android.content.res.Resources
+import androidx.activity.SystemBarStyle
+import androidx.annotation.ColorInt
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
@@ -30,3 +36,17 @@ val Context.screenHeightDp: Dp
         val heightPixels = resources.displayMetrics.heightPixels
         return (heightPixels.toFloat() / density.density).dp
     }
+
+fun autoSystemBarStyle(
+    @ColorInt lightScrim: Color = Color.Transparent,
+    @ColorInt darkScrim: Color = Color.Transparent,
+    detectDarkMode: (Resources) -> Boolean = { resources -> resources.isSystemDarkMode },
+): SystemBarStyle {
+    return SystemBarStyle.auto(lightScrim.toArgb(), darkScrim.toArgb(), detectDarkMode)
+}
+
+val Context.isSystemDarkMode: Boolean
+    get() = resources.isSystemDarkMode
+
+val Resources.isSystemDarkMode: Boolean
+    get() = ((configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES)

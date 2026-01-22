@@ -13,6 +13,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateSetOf
 import androidx.compose.runtime.remember
@@ -20,6 +21,7 @@ import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.mapSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.runtime.snapshots.SnapshotStateSet
 import androidx.compose.ui.graphics.Color
 
@@ -74,6 +76,34 @@ fun <T> rememberSaveableList(
 }
 
 @Composable
+fun <K, T> rememberStateMap(): SnapshotStateMap<K, T> {
+    return rememberStateMap(mutableMapOf())
+}
+
+@Composable
+fun <K, T> rememberStateMap(data: Map<K, T>): SnapshotStateMap<K, T> {
+    val result = remember { mutableStateMapOf<K, T>() }
+    if (data.isNotEmpty()) {
+        result.putAll(data)
+    }
+    return result
+}
+
+@Composable
+fun <K, T> rememberSaveableMap(): SnapshotStateMap<K, T> {
+    return rememberSaveableMap(mutableMapOf())
+}
+
+@Composable
+fun <K, T> rememberSaveableMap(data: Map<K, T>): SnapshotStateMap<K, T> {
+    val result = rememberSaveable { mutableStateMapOf<K, T>() }
+    if (data.isNotEmpty()) {
+        result.putAll(data)
+    }
+    return result
+}
+
+@Composable
 fun <T> rememberState(value: T): MutableState<T> {
     return remember { mutableStateOf(value) }
 }
@@ -112,7 +142,7 @@ fun rememberColorSaveable(
     return rememberSaveable(stateSaver = ColorSaver) { mutableStateOf(value) }
 }
 
-val ColorSaver = run {
+internal val ColorSaver = run {
     val redKey = "Red"
     val greenKey = "Green"
     val blueKey = "Blue"
