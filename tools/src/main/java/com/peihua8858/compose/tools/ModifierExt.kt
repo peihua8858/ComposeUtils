@@ -1,7 +1,9 @@
 package com.peihua8858.compose.tools
 
 import android.annotation.SuppressLint
+import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -10,7 +12,11 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,6 +41,9 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.times
 
 /**
@@ -172,8 +181,12 @@ fun Modifier.topFadeMask(
     alpha: Float = 1f,
     height: Dp = 20.dp,
     colors: List<Color> = listOf(Color.White, Color.Transparent),
+    durationMillis: Int = 400,
 ): Modifier {
-    val alphaAnim by animateFloatAsState(targetValue = alpha)
+    val alphaAnim by animateFloatAsState(
+        targetValue = alpha,
+        animationSpec = tween(durationMillis = durationMillis)
+    )
     return this.then(
         Modifier.drawWithContent {
             drawContent()
@@ -207,8 +220,12 @@ fun Modifier.bottomFadeMask(
     alpha: Float = 1f,
     height: Dp = 20.dp,
     colors: List<Color> = listOf(Color.Transparent, Color.White),
+    durationMillis: Int = 400,
 ): Modifier {
-    val alphaAnim by animateFloatAsState(targetValue = alpha)
+    val alphaAnim by animateFloatAsState(
+        targetValue = alpha,
+        animationSpec = tween(durationMillis = durationMillis)
+    )
     return this.then(
         Modifier.drawWithContent {
             drawContent()
@@ -233,12 +250,17 @@ fun Modifier.bottomFadeMask(
  * 顶部淡入淡出遮罩（Composable版本）
  */
 @Composable
-fun Modifier.topShadow(
+fun Modifier.topFadeMask(
     visible: Boolean = true,
-    colors: List<Color> = listOf(Color.White, Color.Transparent),
     height: Dp = 20.dp,
+    colors: List<Color> = listOf(Color.White, Color.Transparent),
+    durationMillis: Int = 400,
 ): Modifier {
-    val alphaAnim by animateFloatAsState(targetValue = if (visible) 1f else 0f)
+    val alphaAnim by animateFloatAsStateWithDelay(
+        targetValue = if (visible) 1f else 0f,
+        delayMillis = if (visible) 0 else 500,
+        animationSpec = tween(durationMillis = durationMillis)
+    )
     return this.then(
         Modifier.drawWithContent {
             drawContent()
@@ -263,12 +285,17 @@ fun Modifier.topShadow(
  * 底部淡入淡出遮罩（Composable版本）
  */
 @Composable
-fun Modifier.bottomShadow(
+fun Modifier.bottomFadeMask(
     visible: Boolean = true,
-    colors: List<Color> = listOf(Color.Transparent, Color.White),
     height: Dp = 20.dp,
+    colors: List<Color> = listOf(Color.Transparent, Color.White),
+    durationMillis: Int = 400,
 ): Modifier {
-    val alphaAnim by animateFloatAsState(targetValue = if (visible) 1f else 0f)
+    val alphaAnim by animateFloatAsStateWithDelay(
+        targetValue = if (visible) 1f else 0f,
+        delayMillis = if (visible) 0 else 500,
+        animationSpec = tween(durationMillis = durationMillis)
+    )
     return this.then(
         Modifier.drawWithContent {
             drawContent()
@@ -287,4 +314,40 @@ fun Modifier.bottomShadow(
             }
         }
     )
+}
+
+@Composable
+fun animateFloatAsStateWithDelay(
+    targetValue: Float,
+    delayMillis: Long,
+    animationSpec: FiniteAnimationSpec<Float> = tween(),
+    finishedListener: ((Float) -> Unit)? = null,
+    label: String = "DelayedFloatAnimation"
+): State<Float> {
+    var delayedTarget by remember { mutableFloatStateOf(0f) }
+    val animatedValue = animateFloatAsState(
+        targetValue = delayedTarget,
+        animationSpec = animationSpec,
+        finishedListener = finishedListener,
+        label = label
+    )
+    val hideJob = remember { mutableStateOf<Job?>(null) }
+    LaunchedEffect(targetValue, delayMillis) {
+        // 取消之前的隐藏任务
+        hideJob.value?.cancel()
+
+        // 安排 2000ms 后隐藏
+        hideJob.value = launch {
+            if (targetValue != delayedTarget) {
+                delay(delayMillis)
+                delayedTarget = targetValue
+            }
+        }
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            hideJob.value?.cancel()
+        }
+    }
+    return animatedValue
 }
