@@ -51,6 +51,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -70,6 +71,8 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.constrainHeight
+import androidx.compose.ui.unit.constrainWidth
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
@@ -238,6 +241,18 @@ private fun Scrollbar(
         }
     }
 
+    // >>> 新增：是否正在拖拽（用于放大）
+    val isDragging = dragInteraction.value != null
+
+    // >>> 放大后的厚度（可自定义）
+    val expandedThickness = (style.thickness * 2).coerceAtMost(10.dp) // 最大不超过 24dp
+
+    // >>> 动画厚度
+    val currentThickness by animateDpAsState(
+        targetValue = if (isDragging) expandedThickness else style.thickness,
+        animationSpec = tween(durationMillis = style.hoverDurationMillis),
+        label = "scrollbar_thickness"
+    )
     // >>> ✅ 新逻辑：停止滚动 2000ms 后隐藏 <<<
     var isScrollbarVisible by remember { mutableStateOf(false) }
     val hideJob = remember { mutableStateOf<Job?>(null) }
@@ -269,7 +284,8 @@ private fun Scrollbar(
         SliderAdapter(adapter, containerSize, minimalHeight, reverseLayout)
     }
 
-    val scrollThickness = style.thickness.roundToPx()
+    // >>> 使用 currentThickness（动态厚度）代替 style.thickness
+    val scrollThickness = currentThickness.roundToPx()
     val measurePolicy = if (isVertical) {
         remember(sliderAdapter, scrollThickness, insetPx) {
             verticalMeasurePolicy(sliderAdapter, { containerSize = it }, scrollThickness, insetPx)
@@ -298,13 +314,11 @@ private fun Scrollbar(
     val animOffsetDp = if ((isScrollbarVisible || isHighlighted) && isVisible) {
         0.dp
     } else {
-        style.scrollbarPadding + style.thickness
+        style.scrollbarPadding + currentThickness
     }
 
-    val totalOffsetDp = animOffsetDp
-
     val offsetDp by animateDpAsState(
-        targetValue = totalOffsetDp,
+        targetValue = animOffsetDp,
         animationSpec = tween(durationMillis = style.hoverDurationMillis),
         label = "scrollbar_offset"
     )
@@ -741,26 +755,71 @@ private class SliderAdapter(
     val bounds get() = position..position + size
 }
 
+//private fun verticalMeasurePolicy(
+//    sliderAdapter: SliderAdapter,
+//    setContainerSize: (Int) -> Unit,
+//    scrollThickness: Int,
+//    insetPx: Int,
+//) = MeasurePolicy { measurables, constraints ->
+//    setContainerSize(constraints.maxHeight)
+//    val height = sliderAdapter.size.toInt()
+//    val placeable = measurables.first().measure(
+//        Constraints.fixed(scrollThickness, height)
+//    )
+//    // ✅ 关键：layout 宽度 = thickness + inset
+//    val layoutWidth = (scrollThickness + insetPx).coerceAtMost(constraints.maxWidth)
+//    layout(layoutWidth, constraints.maxHeight) {
+//        // ✅ thumb 放在最左侧（x = 0）
+//        placeable.place(0, sliderAdapter.position.toInt())
+//    }
+//}
 private fun verticalMeasurePolicy(
     sliderAdapter: SliderAdapter,
     setContainerSize: (Int) -> Unit,
-    scrollThickness: Int,
+    scrollThickness: Int, // 当前 thumb 厚度
     insetPx: Int,
 ) = MeasurePolicy { measurables, constraints ->
     setContainerSize(constraints.maxHeight)
     val height = sliderAdapter.size.toInt()
+
+    // 测量 thumb：使用当前厚度
     val placeable = measurables.first().measure(
         Constraints.fixed(scrollThickness, height)
     )
-    // ✅ 关键：layout 宽度 = thickness + inset
+
+    // ✅ 关键：容器宽度 = 最大可能厚度 + inset（预留空间）
+    // 但我们不知道最大厚度？→ 改为：容器宽度 = scrollThickness + insetPx
+    // 但为了右对齐，我们需要知道容器总宽
     val layoutWidth = (scrollThickness + insetPx).coerceAtMost(constraints.maxWidth)
+
     layout(layoutWidth, constraints.maxHeight) {
-        // ✅ thumb 放在最左侧（x = 0）
-        placeable.place(0, sliderAdapter.position.toInt())
+        // ✅ thumb 右对齐：x = layoutWidth - scrollThickness - insetPx?
+        // 实际上，insetPx 是额外 padding，我们希望 thumb 在 (insetPx, 0) 到 (layoutWidth, ...) 区域内右对齐
+        // 简化：假设 insetPx 是右侧 padding，那么 thumb 应放在 x = layoutWidth - scrollThickness
+        val x = layoutWidth - scrollThickness
+        placeable.place(x, sliderAdapter.position.toInt())
     }
 }
 
 
+//private fun horizontalMeasurePolicy(
+//    sliderAdapter: SliderAdapter,
+//    setContainerSize: (Int) -> Unit,
+//    scrollThickness: Int,
+//    insetPx: Int,
+//) = MeasurePolicy { measurables, constraints ->
+//    setContainerSize(constraints.maxWidth)
+//    val width = sliderAdapter.size.toInt()
+//    val placeable = measurables.first().measure(
+//        Constraints.fixed(width, scrollThickness)
+//    )
+//    // ✅ layout 高度 = thickness + inset
+//    val layoutHeight = (scrollThickness + insetPx).coerceAtMost(constraints.maxHeight)
+//    layout(constraints.maxWidth, layoutHeight) {
+//        // thumb 放在最顶部
+//        placeable.place(sliderAdapter.position.toInt(), 0)
+//    }
+//}
 private fun horizontalMeasurePolicy(
     sliderAdapter: SliderAdapter,
     setContainerSize: (Int) -> Unit,
@@ -772,11 +831,11 @@ private fun horizontalMeasurePolicy(
     val placeable = measurables.first().measure(
         Constraints.fixed(width, scrollThickness)
     )
-    // ✅ layout 高度 = thickness + inset
     val layoutHeight = (scrollThickness + insetPx).coerceAtMost(constraints.maxHeight)
     layout(constraints.maxWidth, layoutHeight) {
-        // thumb 放在最顶部
-        placeable.place(sliderAdapter.position.toInt(), 0)
+        // ✅ thumb 底部对齐
+        val y = layoutHeight - scrollThickness
+        placeable.place(sliderAdapter.position.toInt(), y)
     }
 }
 
